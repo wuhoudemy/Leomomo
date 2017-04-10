@@ -1,0 +1,136 @@
+finger huangdi 查看用户详细信息
+finger 查看登录情况
+pty远程终端
+tty物理终端 本地
+chfn huangdi 改变用户信息 
+chsh -s /sbin/nologin jack 拒绝jack登录 修改用户登录的shell环境
+groupadd xx 添加组
+groupdel xx 删除组
+gpasswd -a jack tom 添加jack到tom组
+        -d          删除 
+gpasswd -A tom root 将tom作为root组的组长
+userdel jack    jack的内容还在 相当于改了密码
+userdel -r jack 彻底删除jack用户
+usermod -L jack 用户被锁
+usermod -U jack 解锁
+passwd -l tom  passwd -u tom 和以上两个一样
+
+
+批量创建用户的方法
+for 循环添加
+for i in `seq 1 10`
+>do
+>useradd user$i
+>echo "redhat" | passwd --stdin user$i           
+>done 
+do和done之间是你想要的内容
+
+for 循环删除
+for f in `seq 1 10`
+>do
+>userdel user$f
+>done
+
+通过文件添加  /etc/passwd
+newusers < user.txt 以passwd的格式写个文本文档
+chpasswd < passwd.txt
+pwunconv 取消shadow加密
+pwconv 
+chpasswd <*.txt
+> 输出重定向  
+< 输入重定向
+
+
+密码规则
+/etc/login.defs 这个文件可以默认密码规则
+/etc/pam.d/system-auth 这个文件也可以设置密码 
+cd /etc/security/pwquality.conf   centos7里的详细设置规则，针对所有用户 还可以加一个maxsequence=3 在新密码中不允许连续出现同类字符3个以上
+具体看老师文档
+规则对新建的密码有效 不用于已有的密码
+chmod 700 /bin/su 使用户不可用su命令
+
+
+FACL
+file acl权限在默认之上
+getfacl 文件  查看规则
+setfacl -参数  设置规则  setfacl -m u:bob:r-- xx 对xx文件
+setfacl -x u:bob xx 删除权限
+           g:       删除组权限
+如果有#effective:--- 说明没生效，重新执行setfacl
+setfacl -m u:bob:r-- xx/  对xx这个目录
+setfacl -m d:u:bob:rwx xx/ 对这个文件夹内创建的文件或目录 bob都有rwx权限
+setfacl -x d:u:bob xx/ 删除
+
+vim .bash_profile 加变量
+vim .bashrc 别名什么的
+
+SU
+su - tom       su tom
+打开新的shell   留在当前的shell
+sudo 一般用户以root权限
+vim /etc/sudoers 管理有sudo命令的文件  或是visudo  
+root    ALL=(ALL)       ALL
+tom     ALL=(root)      NOPASSWD:/bin/mount,/bin/umount
+                       （不用输密码）
+su - tom -c `touch 11111`在tom家目录下新建了一个
+
+
+PAM
+插入式验证模块 提供了API 用于系统安全认证
+/lib64/security/ PAM模块所在
+/usr/share/doc/pam-1.1.1/txts 所有模块说明文档
+/etc/pam.d/目录下可查看PAM的具体格式
+共三列
+模块类型                  控制标记                                                              调用的模块
+auth  是否存在            required全部通过验证才表示鉴定完毕 不符合要求 不反回信息             pam_xxxxx.so
+account 执行访问控制      include 同时引用
+password 设置密码相关的   sufficient调用成功 返回标识 不再继续
+sessions 管理连接和断开   optional 不论成功失败都继续
+                          requisite 失败终止						  
+/etc/security/access.conf 可否登陆的配置文件 在最后一行 - : tom :ALL
+/etc/pam.d/sshd 在这个文件写一行 account  requird  pam_access.so 那么tom就无法ssh登陆了
+
+
+
+
+互动
+who、w和last命令
+用w看谁在线
+write hf tty2 和hf讲话
+mesq n 关闭通知
+mesq y 开启通知
+wall "5min boom" 群发
+echo "eat cake" | mail -s "吃蛋糕" hf
+                            主题
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
