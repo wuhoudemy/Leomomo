@@ -103,7 +103,7 @@ wall "5min boom" 群发
 echo "eat cake" | mail -s "吃蛋糕" hf
                             主题
 
-
+修改一下
 
 
 
