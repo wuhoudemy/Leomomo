@@ -1,0 +1,158 @@
+修改sshd的默认端口 selinux在enforcing模式下 发现标签改变阻止用户这种行为
+[root@centos6 ~]# vim /etc/ssh/sshd_config  修改了ssh默认的端口号
+[root@centos6 ~]# cat /var/log/audit/audit.log | grep AVC | tail -5 查看审计日志中的AVC信息 AVC是selinux的一个策略服务器
+[root@centos7 ~]# systemctl status sshd 查看当前的sshd的状态 端口修改后 selinux开启的情况下会报错
+semanage port -l | grep ssh 查看原来的ssh对应的端口
+semanage port -a -t ssh_port_t -p tcp 2222 将端口2222的标签改为ssh的标签
+             添加 类型       端口协议
+
+波尔值 进程的开关
+[root@centos6 ~]# getsebool -a | grep http 查看系统中默认的波尔值 可过滤
+[root@centos6 ~]# ls /selinux/booleans/
+[root@centos6 booleans]# setsebool -P ftpd_anon_write on 设置永久波尔值开关  没有-P的话是临时生效
+[root@centos6 booleans]# sestatus -b 也可查看波尔值
+图形化管理工具 yum install policycoreutils\*    yum whatprovides system_config_selinux
+排故工具 yum install setroubleshoot
+
+
+
+BASH
+bash：最常用 整合了csh ksh的功能
+tcsh
+csh
+ksh
+zsh:终极shell
+powershall：windows的shell
+cat /etc/shells
+echo "today is" date ; cal
+echo "scale=10; 33/23" | bc  33/22 保留10位小数 精度
+echo "111*222" | bc
+echo "obase=2; 101010" | bc 将101010转换为二进制的
+
+双引号""  识别特殊符号 比如$、`、\ 等
+单引号''  原样显示
+反引号``  echo today is `date` 命令替换的作用 将字符串中的某一个被包裹的变为指令（指令存在）
+[root@centos6 ~]# echo "'$PATH'"
+'/usr/lib64/qt-3.3/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin:/root/bin'
+[root@centos6 ~]# echo '"$PATH"'
+"$PATH"
+
+
+变量
+~  家目录，当前用户的家
+格式：变量名=值
+注：不能数字开头 等于号左右没有空格
+本地变量：
+        x=24 echo=$x 区分大小写
+        unset x 取消变量
+		当前有效
+		echo $$ 查看当前shell值
+环境变量：
+        [root@centos6 ~]# pgrep sshd 获取摸一个进程的pid
+        export 查看当前的环境变量
+		env  同上
+		export xx=24 设置环境变量  unset xx 取消变量
+		declare -x zz=10 定义环境变量  -i 整数型变量
+		declare +x或+i 
+		declare -r aa 只读变量aa
+位置变量：
+        set 1 2 3 4 5 6 7 8 9 10 a b c d
+		echo ${13} 查看变量名时用{}来包裹 内容是一个整体 echo $13 显示的是13而不是c
+        $0：脚本 指令名称
+		$1：第一个参数
+		$#：总个数
+		$$：
+		$?：上一个指令执行成功还是失败 0成功 非0失败
+		$@：所有的参数都显示
+		[root@centos6 tmp]# echo $PS1
+        [\u@\h \W]\$ 可以自定义
+
+shell中的read（交互）
+[root@centos6 tmp]# read xx 
+[root@centos6 tmp]# read  不写变量名 默认赋值给REPLY
+read -s password 不显示输出
+read -t 4 password 4秒不输入就结束
+read -p "请输入：" xx
+read -d "￥" xx  定义中断符号 可以一直输入 知道出现￥ 
+
+数组
+aa=(dd ww ff vv)
+echo ${aa[3]}     echo ${aa[@]}查看所有数组   echo ${！aa[@]}查看所有数组的下标  echo ${#aa[@]}查看所有数组的数量
+declare -A mm 关联数组
+mm={mm[name1]=aa mm[name2]=bb
+echo ${mm[name1]} 会显示aa
+
+添加修改
+r=${path#*/bin:} 一个#表示从前往后最短匹配 两个#从前往后最长匹配
+r=${path%bin*}            从后往前
+
+set -u 提示作用 变量是否存在
+set -x 打开回响模式  指令是否有问题
+set +x 关闭回响模式
+set +u 取消提醒
+
+
+vim /etc/issus 设置登录前的信息
+\d 显示时间
+\n 显示网络信息
+\v 操作系统版本信息
+
+在家目录下
+.bash_profile 用户登录时执行 设置了用户的环境变量 主要配置还是.bashrc
+.bashrc   每打开一次shell 都会读取
+
+通配符  对文件名来用的
+[] 代表一个字符
+[0-9]  0-9 其中一个
+[!0-9] 除了数字
+？ 匹配一个任意字符
+*  匹配任意字符 任意长度
+[a-z]  26个中的一个
+[!a-z] 除了字母
+[a\-z] a和-和z 三个中一个
+
+重定向
+ls /dev/std 
+stdin  0 
+stdout 1
+stderr 2
+输出重定向 >  
+cal > xx 先判断右边是否存在 没有创建 有的话先清空内容再将左边的结果输出到xx中 
+         使用>>不会将先前的内容清空 
+		 无论是>还是>> 都重定向正确的内容  
+		 重定向错误的输出 2> 2>>
+         不论正确还是错误都输出 ca1 &>xx; cal &>>xx
+ca1 >> xx 2>&1 将错误的结果作为正确的输出
+cal >> xx 1>&2   正确          错误
+ 
+输入重定向 <
+tr 'a-z' 'A-Z' < /etc/passwd &> xx   tr字符的替换
+echo "10^10" > xx
+bc < xx 将xx中的内容给bc计算
+
+
+here文档
+cat > server.repo << EOF  最后的中断随便是什么
+>[bash]
+>name=base
+>baseurl=file:///mnt/
+>enabled=1
+>gpgcheck=0
+>EOF
+
+和或
+command1 || command2 一个为真 整体为真 1为真2不运行 1为假2为真2运行
+         &&          二个为真 整体为真 一个为假不运行
+grep tom /etc/passwd --color  将tom从目录下找出
+                              -i忽略大小写  -n第几行  -v反向过滤 用在文档里
+							  
+cut 剪切  -d 定义以什么为分割符 -f 分割第几段
+last | cut -d " " -f1 | sort -u              sort 按字母排序 sort -n 数字从小到大
+                        排序 重复的去掉
+last | cut -d " " -f1 | sort | uniq -c
+                               统计 显示重名出现次数
+							   
+paste aa bb > xx 合并
+
+切割 split -b 100k service xx 被切割下来的文件以xx开头
+合并 cat xx* > services   
