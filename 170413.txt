@@ -1,27 +1,38 @@
-netstat -ntulp | grep :22
-ss -ntulp | grep :22
-禁止反向解析 tcp udp pid
+netstat -ntulp | grep :22  netstat和网络相关的信息
+ss -ntulp | grep :22 和上面那个一样 速度会快一些   都是查看服务连接的
+-n 禁止反向解析
+-t 所有的tcp连接
+-u 所有的udp连接
+-l 列表形式
+-p 进程号
 free 看内存信息
+free -m M为单位显示
+free -g G为单位显示
 [root@centos6 ~]# uptime 查看登录用户和开机时间等
 18:40:15 up 21 min,  2 users,  load average: 0.19, 0.13, 0.16
 [root@centos6 ~]# vmstat 1 3 执行3次每次1秒 查看系统的信息报告
-si：磁盘每秒读入虚拟内存的大小 大于0说明物理内存耗尽
+si：磁盘每秒读入虚拟内存的大小 大于0说明物理内存耗尽 一般为0
 so：每秒写入的虚拟内存的大小
 bi：块设备每秒接收的块数量
 bo：每秒发送的块数量
 in：每秒cpu的中断次数
+cs：每秒上下文的切换次数
 
-[root@centos6 ~]# sar 1 2
+sar：非常重要的一个工具 可以通过它判断系统的整体性能
+[root@centos6 ~]# sar 1 2  采样cpu信息
 [root@centos6 ~]# sar -P ALL 1 1 查看所有逻辑cpu的动态报告
 [root@centos6 ~]# sar -r 1 2 对内存采样
 [root@centos6 ~]# sar -b 1 2 对磁盘io采样
 tps      rtps      wtps   bread/s   bwrtn/s
-每秒对磁盘发送的请求
-每秒对磁盘的读请求
-            写
-每秒读取的数据量
-[root@centos6 ~]# sar -d -p 1 2 显示具体块设备的状态 -p显示标准名称 -d表示dev
-[root@centos6 ~]# sar -n DEV 1 2 查看网卡的使用状态 可加具体名称
+tps     每秒对磁盘发送的请求
+rtps    每秒对磁盘的读请求
+wtps    每秒对磁盘的写请求
+bread/s 每秒读取的数据量
+bwrtn/s 每秒写入的数据量
+[root@centos6 ~]# sar -d -p 1 2 显示具体块设备的状态 -p显示标准名称 -d表示硬件设备
+[root@centos6 ~]# sar -n DEV 1 2 查看网卡的使用状态 可在DEV后加具体网卡名称
+
+
 
 
 
@@ -34,11 +45,13 @@ MAC 强制访问控制，任何进程企图在selinux中执行时必须在安全配置策略中有特定权限
 selinux工作模式 针对一个进程是否有打开某些特定文件文档的权限
 主体：进程（程序）
 客体：文件 端口 设备
-策略：targeted策略 只提供对网络服务的限制、mls最严格的策略规则 无论是本地还是网络、minimum（7里的）针对有限的进程进行控制
+策略：targeted策略  cat/etc/selinux/config 目录下
+target策略只提供对网络服务的限制、mls最严格的策略规则 无论是本地还是网络、minimum（7里的）是target的升级版针对有限的进程进行控制
+
 安全上下文:定义了主体客体的上下文必须一致才能安全访问
            移动文件时安全上下文不变 
-           复制时改变 
-           创建时会根据系统的预制生成上下文 
+           复制时会生成新的安全上下文 跟着目录走 
+           创建时会根据系统的预置生成上下文 
            安装软件时由系统定义
 上下文 
 system_u:object_r:admin_home_t:s0
@@ -47,24 +60,38 @@ system_u:object_r:admin_home_t:s0
          system_u 管理员预设身份
          unconfined_u 不做定义
          user_u 普通用户
-角色：文件或目录 object_r  进程或程序system_r
-类型：程序 domain
-      文件资源 type
+角色：
+     文件或目录 object_r  
+     进程或程序 system_r
+类型：
+     程序 domain
+     文件资源 type
 [root@centos6 ~]# ls -Z 查看上下文
-[root@centos6 ~]# yum install setools\*
-[root@centos6 ~]# yum install sys
-semanage fcontext -l | grep /etc/passwd 查看系统上下文
-ll /etc/sysconfig/selinux   selinux的主配置文件
-selinux有三种模式：
-                  enforcing  强制模式 对违规进行限制
-                  permissive 宽容模式 显示警告 不阻止
+[root@centos6 ~]# yum whatprovides */semanage  然后安装policycoreutils-python这个包 专门用来查看selinux的上下文的
+semanage fcontext -l | grep /etc/passwd  查看文件或目录或进程的上下文
+                  -a+文件名或目录名称    添加上下文
+				  -d+                    删除上下文
+                  -m+                    修改上下文				  
+ll /etc/sysconfig/selinux   selinux的主配置文件 是一个链接
+selinux有三种模式（基于红帽系统）：
+                  enforcing  强制模式 对违规进行限制 rhel 7里是默认的
+                  permissive 宽容模式 显示警告 不阻止 相当于关了
                   disabled   禁用selinux。必须重启系统才生效 
-[root@centos6 ~]# sestatus 查看当前的selinux的状态
+[root@centos6 ~]# sestatus   查看当前的selinux的状态
 [root@centos6 ~]# getenforce 查看当前模式
 [root@centos6 ~]# setenforce 加数字    设置selinux模式
+                             1     是设置为enforcing模式
+							 0     是设置为permissive模式
 这些设置临时有效 改配置文件才会永久
+
+selinux 是额外的安全机制 凌驾于防火墙 权限以外的 防止权限的滥用
+service httpd restart
+systemctl restart httpd.service 
+
 chcon -R -t httpd_sys_content_t /tmp/xx 修改xx目录下所有内容的上下文
-chcon -R --reference=/tmp /tmp/xx 引用tmp目录的上下文给xx目录
+-R：递归 
+-t：改的上下文是什么
+chcon -R --reference=/tmp /tmp/xx  引用tmp目录的上下文给xx目录
 
 
 
