@@ -1,0 +1,125 @@
+service iptables save 保存当前的防火墙设置成为默认配置 下次重启会出现
+/etc/sysconfig/iptables 目录下保存了默认配置 修改重启服务有效 10.0.0.1/32 的意思是指明这个地址只是一个主机地址 不是网段
+iptables -F  临时清空所有规则 立即生效 重启会重新出现默认规则
+iptables -I INPUT -p tcp --dport 22 -m mac --mac 00:0c:29:23:33:be -j LOG 指定额外参数 记录模式
+                                                                      /var/log/messages
+iptables -P INPUT DROP 将默认规则改为DROP 会显示Chain INPUT（policy DROP）
+
+FORWARD链 服务器默认不转发 
+
+OUTPUT链设置state的四种类型:
+             1.NEW         建立连接的第一个包 通常是发起方的第一个包
+             2.ESTABLISHED NEW的下一个状态 通常是收到第一个NEW包后产生的 icmp中的重定向或错误都属于
+             3.RELATED     第三状态 存在第二于状态连接之外的连接 有ESTABLISHED才会有RELATED 第三次握手
+             4.INVALID     错误的连接类型 通常是包头有错误或是连接被DROP
+iptables -I OUTPUT -p tcp -m state --state=ESTABLISHED,RELATED --sport 22 -j DROP和iptables -P OUTPUT DROP这样设置的话 不好主动
+向外发送NEW包  只好等外向内发送请求后的回复
+
+iptables-save > /fw    保存防火墙的配置文件
+iptables-restore < /fw 读取
+
+NAT表的配置 
+SNAT  源地址转换    postrouting
+DNAT  目的地址转换  prerouting
+环境要三台主机   外--防火墙--内
+
+iptables -t nat -F 临时清空
+iptables -t nat -A POSTROUTING -s 20.0.0.0/24 -j SNAT --to-source 10.0.0.1  源地址转换将源地址转成10.0.0.1
+iptables -t nat -A PREROUTING  -p tcp --dport 80 -j DNAT --to-dest 20.0.0.2 目的地址转换为20.0.0.2 并指定了访问的是10.0.0.1的80口
+                                              80                   20.0.0.2:8080
+											  20000                20.0.0.2:8080 先要放行20000口
+iptables -t nat -A POSTROUTING -s 20.0.0.0/24 -j MASQUERAD  动态替换 如果10.0.0.1变的话会同步  一般用于postrouting链
+iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-dest 20.0.0.2 防火墙上网 访问的是10.0.0.1 
+
+
+
+
+
+firewalld rhel7
+默认有三个防火墙 firewallld 还有iptables和ebtables
+为了防止防火墙之间的冲突 服务可以 disable、stop和mask
+systemctl mask iptables.service和ebtables.service
+
+有两种状态 runtime(运行时)和permanent(永久)  runtime为默认状态 立即生效 重启失效   permanent 当前不生效重启后永久生效
+firewall-config 可打开图形化 便于理解命令
+区域zone：
+drop    最严格的策略 丢弃所有 不给出任何提示
+block   和drop一样的策略 仅次于drop 但是给出提示信息
+trusted 最宽松的策略，放行所有
+public  默认策略
+不同的区域有不同的默认策略 可对services ports nat 端口映射 icmp过滤和富规则进行设置
+
+firewall-cmd --set-default-zone=public 设置默认的zone区域 重启生效
+             --get-default-zone 查看当前默认在的区域
+			 --get-services     查看支持的服务
+			 --get-zones        所有的区域
+			 --get-zone-of-interface=eno16777736       查看网卡所在的区域
+			 --zone=public --list-services             查看当前区域下所支持的服务
+			 --zone=home --add-interface=eno16777736   添加网卡到某个区域   
+			             --change-interface=           如果这个网卡有区域的话用change
+						 --add-service=http            将服务添加到区域内
+			 --zone=home --query-interface=eno16777736 问网卡在不在这个区域内
+			                    -service=http          问服务在不在区域内
+								-port=445/tcp
+			 --zone=home --add-port=445/tcp --permanent 放行445口重启永久生效
+service reload firewalld.service 重读
+        restart=stop+start
+		                 --add-source=20.0.0.0/24    只收这个网段的
+             --zone=home --remove-source=20.0.0.0/24
+			 --zone=home --list-all 查看区域的所有信息
+
+富规则----细化某一个防火墙的设置
+firewall-cmd --list-rich-rule
+             --add-rich-rule='rule family=ipv4 service name=vnc-server source address=1.1.1.1 reject'临时生效 --permanent 永久生效
+             --add-forward-port port=80:proto=tcp:toaddr=20.0.0.2:toport=80 添加端口转发
+             --add-masquerade  nat伪装 就是动态同步地址的
+			 --add-rich-rule='rule family=ipv4 source address=20.0.0.0/24 masquerade' 指定nat伪装的网段
+
+
+
+
+GunPG加密
+对称加密 DES 3DES AES RC5 
+优点：快 加密效率高 解密性能好
+缺点：秘钥配送问题 如何把公钥安全给你
+应用:wep 
+非对称加密 RSA 
+公钥 私钥
+密文=明文的E次方除以N，得到的余数就是密文
+明文=密文的D次方除以N，得到的余数就是明文
+E和N的结合就是公钥   D和N的结合就是私钥
+ECC：比RSA的秘钥长度更短 安全性更高
+应用:ssh https
+优点：安全性高
+缺点：性能差 开销大 存在中间人攻击
+
+混合算法：对称+非对称 
+对称加密算法加密信息
+用非对称算法传递对称加密算法中的会话秘钥
+
+数字签名
+单向散列函数 md5 sha1 sha256 sha512 数据是否被修改过
+信息认证码MAC
+发送方和接收方预共享密钥
+发送方加密预共享密钥
+接收方收到后也进行同样的操作，并对比两人的结果是否一致
+
+
+cd ~/.gnupg 目录下有存放了公钥和私钥
+gpg --gen-key
+gpg --list-keys
+gpg --list-secret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
